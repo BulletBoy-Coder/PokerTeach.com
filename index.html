@@ -1,22 +1,22 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Poker_Teach</title>
+  <title>Texas Hold'em Simulation</title>
   <style>
-    body { font-family: Arial; text-align: center; margin-top: 40px; }
+    body { font-family: Arial, sans-serif; text-align: center; margin-top: 40px; }
     table { margin: 20px auto; border-collapse: collapse; }
     th, td { border: 1px solid #333; padding: 10px 20px; font-size: 1.2em; }
-    button { padding: 10px 20px; font-size: 1em; }
+    button { padding: 10px 20px; font-size: 1em; margin-bottom: 20px; }
     #tableCards { font-size: 1.5em; margin: 20px; }
   </style>
 </head>
 <body>
-  <h1>Poker Table: Opponent Showdown</h1>
-  <button onclick="dealTable()">Deal Hands</button>
+  <h1>Texas Hold'em: Opponent Showdown</h1>
+  <button onclick="dealGame()">Deal Game</button>
   <div id="tableCards"></div>
   <table id="pokerTable">
     <thead>
-      <tr><th>Player</th><th>Hand</th><th>Rank</th></tr>
+      <tr><th>Player</th><th>Hand</th><th>Best Hand</th></tr>
     </thead>
     <tbody></tbody>
   </table>
@@ -43,23 +43,79 @@
       }
     }
 
-    function evaluate(hand, table) {
-      const allCards = hand.concat(table);
-      const rankCounts = {};
-      for (let card of allCards) {
-        let rank = card[0];
-        rankCounts[rank] = (rankCounts[rank] || 0) + 1;
-      }
-      const values = Object.values(rankCounts);
-      if (values.includes(4)) return 7; // Four of a Kind
-      if (values.includes(3) && values.includes(2)) return 6; // Full House
-      if (values.includes(3)) return 3; // Three of a Kind
-      if (values.filter(v => v === 2).length >= 2) return 2.5; // Two Pair
-      if (values.includes(2)) return 2; // One Pair
-      return 1; // High Card
+    function getRankValue(rank) {
+      return ranks.indexOf(rank);
     }
 
-    function dealTable() {
+    function getCombinations(arr, size) {
+      const result = [];
+      const combine = (start, combo) => {
+        if (combo.length === size) {
+          result.push(combo);
+          return;
+        }
+        for (let i = start; i < arr.length; i++) {
+          combine(i + 1, combo.concat([arr[i]]));
+        }
+      };
+      combine(0, []);
+      return result;
+    }
+
+    function evaluateFiveCardHand(cards) {
+      const rankCounts = {};
+      const suitCounts = {};
+      const values = [];
+
+      for (let card of cards) {
+        let rank = card[0];
+        let suit = card[1];
+        rankCounts[rank] = (rankCounts[rank] || 0) + 1;
+        suitCounts[suit] = (suitCounts[suit] || 0) + 1;
+        values.push(getRankValue(rank));
+      }
+
+      values.sort((a, b) => b - a);
+      const isFlush = Object.values(suitCounts).some(count => count === 5);
+      const isStraight = checkStraight(values);
+
+      if (isFlush && isStraight) return { score: 8, name: "Straight Flush", kickers: values };
+      if (Object.values(rankCounts).includes(4)) return { score: 7, name: "Four of a Kind", kickers: getKickers(rankCounts, values) };
+      if (Object.values(rankCounts).includes(3) && Object.values(rankCounts).includes(2)) return { score: 6, name: "Full House", kickers: getKickers(rankCounts, values) };
+      if (isFlush) return { score: 5, name: "Flush", kickers: values };
+      if (isStraight) return { score: 4, name: "Straight", kickers: values };
+      if (Object.values(rankCounts).includes(3)) return { score: 3, name: "Three of a Kind", kickers: getKickers(rankCounts, values) };
+      if (Object.values(rankCounts).filter(v => v === 2).length === 2) return { score: 2, name: "Two Pair", kickers: getKickers(rankCounts, values) };
+      if (Object.values(rankCounts).includes(2)) return { score: 1, name: "One Pair", kickers: getKickers(rankCounts, values) };
+      return { score: 0, name: "High Card", kickers: values };
+    }
+
+    function getKickers(rankCounts, values) {
+      const sortedRanks = Object.keys(rankCounts)
+        .sort((a, b) => getRankValue(b) - getRankValue(a));
+      return sortedRanks.map(r => getRankValue(r));
+    }
+
+    function checkStraight(values) {
+      let unique = [...new Set(values)];
+      for (let i = 0; i <= unique.length - 5; i++) {
+        let slice = unique.slice(i, i + 5);
+        if (slice.every((v, idx, arr) => idx === 0 || arr[idx - 1] - 1 === v)) return true;
+      }
+      // Special case: A-2-3-4-5
+      if (unique.includes(12) && unique.includes(0) && unique.includes(1) && unique.includes(2) && unique.includes(3)) return true;
+      return false;
+    }
+
+    function compareHands(a, b) {
+      if (a.score !== b.score) return a.score - b.score;
+      for (let i = 0; i < Math.min(a.kickers.length, b.kickers.length); i++) {
+        if (a.kickers[i] !== b.kickers[i]) return a.kickers[i] - b.kickers[i];
+      }
+      return 0;
+    }
+
+    function dealGame() {
       let deck = createDeck();
       shuffle(deck);
 
@@ -70,31 +126,29 @@
       let players = [];
       for (let i = 1; i <= numPlayers; i++) {
         let hand = [deck.pop(), deck.pop()];
-        let score = evaluate(hand, tableCards);
-        players.push({ name: "Player " + i, hand, score });
+        let allCards = hand.concat(tableCards);
+        let best = getCombinations(allCards, 5)
+          .map(combo => evaluateFiveCardHand(combo))
+          .sort((a, b) => compareHands(b, a))[0];
+        players.push({ name: "Player " + i, hand, score: best.score, rank: best.name, kickers: best.kickers });
       }
 
       let tbody = document.querySelector("#pokerTable tbody");
       tbody.innerHTML = "";
-      let bestScore = 0;
+      let bestScore = -1;
+      let bestKickers = [];
       let winners = [];
 
       for (let player of players) {
-        let rankName = {
-          7: "Four of a Kind",
-          6: "Full House",
-          3: "Three of a Kind",
-          2.5: "Two Pair",
-          2: "One Pair",
-          1: "High Card"
-        }[player.score];
-        let row = `<tr><td>${player.name}</td><td>${player.hand.join(" ")}</td><td>${rankName}</td></tr>`;
+        let row = `<tr><td>${player.name}</td><td>${player.hand.join(" ")}</td><td>${player.rank}</td></tr>`;
         tbody.innerHTML += row;
 
-        if (player.score > bestScore) {
+        let result = compareHands({ score: bestScore, kickers: bestKickers }, { score: player.score, kickers: player.kickers });
+        if (result < 0) {
           bestScore = player.score;
+          bestKickers = player.kickers;
           winners = [player.name];
-        } else if (player.score === bestScore) {
+        } else if (result === 0) {
           winners.push(player.name);
         }
       }
