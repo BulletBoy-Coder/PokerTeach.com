@@ -1,45 +1,97 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Texas Hold'em Simulation</title>
+  <title>Poker Trainer</title>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; margin-top: 40px; }
-    table { margin: 20px auto; border-collapse: collapse; }
-    th, td { border: 1px solid #333; padding: 10px 20px; font-size: 1.2em; }
-    button { padding: 10px 20px; font-size: 1em; margin-bottom: 20px; }
-    #tableCards { font-size: 1.5em; margin: 20px; }
+    body { font-family: Arial, sans-serif; text-align: center; margin-top: 30px; }
+    .card-box { display: inline-block; border: 2px solid #ccc; padding: 10px; margin: 10px; cursor: pointer; border-radius: 8px; }
+    .card-box.selected { border-color: blue; background-color: #eef; }
+    .card-box.correct { border-color: green; background-color: #dfd; }
+    .card-box.incorrect { border-color: red; background-color: #fdd; }
+    button { padding: 10px 20px; font-size: 1em; margin: 10px; }
+    #community { font-size: 1.5em; margin: 20px; }
+    #feedback { font-size: 1.2em; margin-top: 20px; }
   </style>
 </head>
 <body>
-  <h1>Texas Hold'em: Opponent Showdown</h1>
-  <button onclick="dealGame()">Deal Game</button>
-  <div id="tableCards"></div>
-  <table id="pokerTable">
-    <thead>
-      <tr><th>Player</th><th>Hand</th><th>Best Hand</th></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-  <h2 id="winner"></h2>
+  <h1>Poker Trainer</h1>
+  <div id="stepArea">
+    <button onclick="nextStep()">Next</button>
+  </div>
+  <div id="community"></div>
+  <div id="players"></div>
+  <button onclick="submitWinner()">Submit Winner</button>
+  <div id="feedback"></div>
 
   <script>
     const suits = ['♠', '♥', '♦', '♣'];
     const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
+    let deck = [], step = 0;
+    let playerHands = {}, communityCards = [];
+    let selected = [];
 
     function createDeck() {
-      let deck = [];
+      deck = [];
       for (let suit of suits) {
         for (let rank of ranks) {
           deck.push(rank + suit);
         }
       }
-      return deck;
+      shuffle(deck);
     }
 
-    function shuffle(deck) {
-      for (let i = deck.length - 1; i > 0; i--) {
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [deck[i], deck[j]] = [deck[j], deck[i]];
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+
+    function nextStep() {
+      if (step === 0) {
+        createDeck();
+        playerHands = {
+          "Player 1": [deck.pop(), deck.pop()],
+          "Bot 1": [deck.pop(), deck.pop()],
+          "Bot 2": [deck.pop(), deck.pop()],
+          "Bot 3": [deck.pop(), deck.pop()]
+        };
+        communityCards = [deck.pop(), deck.pop(), deck.pop(), deck.pop(), deck.pop()];
+        document.getElementById("players").innerHTML = renderBox("Player 1", playerHands["Player 1"]);
+        step++;
+      } else if (step === 1) {
+        document.getElementById("community").innerText = "Flop: " + communityCards.slice(0, 3).join(" ");
+        step++;
+      } else if (step === 2) {
+        document.getElementById("community").innerText += " | Turn: " + communityCards[3];
+        step++;
+      } else if (step === 3) {
+        document.getElementById("community").innerText += " | River: " + communityCards[4];
+        step++;
+      } else if (step === 4) {
+        let html = "";
+        for (let name in playerHands) {
+          html += renderBox(name, playerHands[name]);
+        }
+        document.getElementById("players").innerHTML = html;
+        step++;
+      }
+    }
+
+    function renderBox(name, hand) {
+      return `<div class="card-box" onclick="toggleSelect('${name}')" id="${name.replace(' ', '')}">
+                <strong>${name}</strong><br>${hand.join(" ")}
+              </div>`;
+    }
+
+    function toggleSelect(name) {
+      const box = document.getElementById(name.replace(' ', ''));
+      if (selected.includes(name)) {
+        selected = selected.filter(n => n !== name);
+        box.classList.remove("selected");
+      } else {
+        selected.push(name);
+        box.classList.add("selected");
       }
     }
 
@@ -63,37 +115,26 @@
     }
 
     function evaluateFiveCardHand(cards) {
-      const rankCounts = {};
-      const suitCounts = {};
-      const values = [];
-
+      const rankCounts = {}, suitCounts = {}, values = [];
       for (let card of cards) {
-        let rank = card[0];
-        let suit = card[1];
+        let rank = card[0], suit = card[1];
         rankCounts[rank] = (rankCounts[rank] || 0) + 1;
         suitCounts[suit] = (suitCounts[suit] || 0) + 1;
         values.push(getRankValue(rank));
       }
-
       values.sort((a, b) => b - a);
-      const isFlush = Object.values(suitCounts).some(count => count === 5);
+      const isFlush = Object.values(suitCounts).some(c => c === 5);
       const isStraight = checkStraight(values);
 
       if (isFlush && isStraight) return { score: 8, name: "Straight Flush", kickers: values };
-      if (Object.values(rankCounts).includes(4)) return { score: 7, name: "Four of a Kind", kickers: getKickers(rankCounts, values) };
-      if (Object.values(rankCounts).includes(3) && Object.values(rankCounts).includes(2)) return { score: 6, name: "Full House", kickers: getKickers(rankCounts, values) };
+      if (Object.values(rankCounts).includes(4)) return { score: 7, name: "Four of a Kind", kickers: values };
+      if (Object.values(rankCounts).includes(3) && Object.values(rankCounts).includes(2)) return { score: 6, name: "Full House", kickers: values };
       if (isFlush) return { score: 5, name: "Flush", kickers: values };
       if (isStraight) return { score: 4, name: "Straight", kickers: values };
-      if (Object.values(rankCounts).includes(3)) return { score: 3, name: "Three of a Kind", kickers: getKickers(rankCounts, values) };
-      if (Object.values(rankCounts).filter(v => v === 2).length === 2) return { score: 2, name: "Two Pair", kickers: getKickers(rankCounts, values) };
-      if (Object.values(rankCounts).includes(2)) return { score: 1, name: "One Pair", kickers: getKickers(rankCounts, values) };
+      if (Object.values(rankCounts).includes(3)) return { score: 3, name: "Three of a Kind", kickers: values };
+      if (Object.values(rankCounts).filter(v => v === 2).length === 2) return { score: 2, name: "Two Pair", kickers: values };
+      if (Object.values(rankCounts).includes(2)) return { score: 1, name: "One Pair", kickers: values };
       return { score: 0, name: "High Card", kickers: values };
-    }
-
-    function getKickers(rankCounts, values) {
-      const sortedRanks = Object.keys(rankCounts)
-        .sort((a, b) => getRankValue(b) - getRankValue(a));
-      return sortedRanks.map(r => getRankValue(r));
     }
 
     function checkStraight(values) {
@@ -102,7 +143,6 @@
         let slice = unique.slice(i, i + 5);
         if (slice.every((v, idx, arr) => idx === 0 || arr[idx - 1] - 1 === v)) return true;
       }
-      // Special case: A-2-3-4-5
       if (unique.includes(12) && unique.includes(0) && unique.includes(1) && unique.includes(2) && unique.includes(3)) return true;
       return false;
     }
@@ -115,48 +155,30 @@
       return 0;
     }
 
-    function dealGame() {
-      let deck = createDeck();
-      shuffle(deck);
+    function submitWinner() {
+      let bestScore = -1, bestKickers = [], actualWinners = [];
 
-      let tableCards = deck.splice(0, 5);
-      document.getElementById("tableCards").innerText = "Table Cards: " + tableCards.join(" ");
-
-      let numPlayers = Math.floor(Math.random() * 3) + 2; // 2 to 4
-      let players = [];
-      for (let i = 1; i <= numPlayers; i++) {
-        let hand = [deck.pop(), deck.pop()];
-        let allCards = hand.concat(tableCards);
+      for (let name in playerHands) {
+        let allCards = playerHands[name].concat(communityCards);
         let best = getCombinations(allCards, 5)
           .map(combo => evaluateFiveCardHand(combo))
           .sort((a, b) => compareHands(b, a))[0];
-        players.push({ name: "Player " + i, hand, score: best.score, rank: best.name, kickers: best.kickers });
-      }
 
-      let tbody = document.querySelector("#pokerTable tbody");
-      tbody.innerHTML = "";
-      let bestScore = -1;
-      let bestKickers = [];
-      let winners = [];
-
-      for (let player of players) {
-        let row = `<tr><td>${player.name}</td><td>${player.hand.join(" ")}</td><td>${player.rank}</td></tr>`;
-        tbody.innerHTML += row;
-
-        let result = compareHands({ score: bestScore, kickers: bestKickers }, { score: player.score, kickers: player.kickers });
+        let result = compareHands({ score: bestScore, kickers: bestKickers }, best);
         if (result < 0) {
-          bestScore = player.score;
-          bestKickers = player.kickers;
-          winners = [player.name];
+          bestScore = best.score;
+          bestKickers = best.kickers;
+          actualWinners = [name];
         } else if (result === 0) {
-          winners.push(player.name);
+          actualWinners.push(name);
         }
       }
 
-      document.getElementById("winner").innerText = winners.length > 1
-        ? "🤝 Tie between: " + winners.join(", ")
-        : "🏆 Winner: " + winners[0];
-    }
-  </script>
-</body>
-</html>
+      let correct = selected.sort().join(",") === actualWinners.sort().join(",");
+      let feedback = document.getElementById("feedback");
+      feedback.innerHTML = correct
+        ? `✅ Correct! You selected: ${selected.join(", ")}`
+        : `❌ Incorrect. You selected: ${selected.join(", ")}<br>Correct winner(s): ${actualWinners.join(", ")}`;
+
+      for (let name in playerHands) {
+        let box = document.getElementById(name.replace('[43dcd9a7-70db-4a1f-b0ae-981daa162054](https://github.com/Aliadelik07/mnm_experiment/tree/c105662cf954307384ff62525c8ede999477e386/html%2Flib%2Futil-2020.2.js?citationMarker=43dcd9a7-70db-4a1f-b0ae-981daa162054 "1")[43dcd9a7-70db-4a1f-b0ae-981daa162054](https://github.com/derycklong/PluralSight-Angular-Tutorial/tree/f841c806af1dc94e9316799fbcee7b3cc1a0c086/node_modules%2Fsocks%2Fbuild%2Fcommon%2Futil.js?citationMarker=43dcd9a7-70db-4a1f-b0ae-981daa162054 "2")
