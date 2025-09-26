@@ -1,0 +1,35 @@
+<style>
+  #loadingScreen {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: black;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 3em;
+    z-index: 9999;
+    flex-direction: column;
+    animation: fadeOut 1s ease-in-out 3s forwards;
+  }
+
+  #loadingScreen .aces {
+    display: flex;
+    gap: 20px;
+  }
+
+  @keyframes fadeOut {
+    to { opacity: 0; visibility: hidden; }
+  }
+</style>
+
+<div id="loadingScreen">
+  <div class="aces">
+    <span>🂡</span> <!-- Ace of Spades -->
+    <span>🂱</span> <!-- Ace of Hearts -->
+    <span>🃁</span> <!-- Ace of Diamonds -->
+    <span>🃑</span> <!-- Ace of Clubs -->
+  </div>
+  <div style="margin-top: 20px;">Loading Poker Trainer…</div>
+</div>
