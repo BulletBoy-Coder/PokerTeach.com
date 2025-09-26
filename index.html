@@ -1,171 +1,35 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Poker Trainer</title>
-  <style>
-    body { font-family: Arial, sans-serif; text-align: center; margin-top: 30px; }
-    .card { display: inline-block; border: 2px solid #ccc; padding: 10px; margin: 5px; cursor: pointer; border-radius: 6px; font-size: 1.2em; }
-    .card.selected { border-color: blue; background-color: #eef; }
-    .card.correct { border-color: green; background-color: #dfd; }
-    .card.incorrect { border-color: red; background-color: #fdd; }
-    .hand { margin: 10px; }
-    button { padding: 10px 20px; margin: 10px; font-size: 1em; }
-    #feedback { font-size: 1.2em; margin-top: 20px; }
-  </style>
-</head>
-<body>
-  <h1>Poker Trainer</h1>
-  <button onclick="nextStep()">Next</button>
-  <div id="gameArea"></div>
-  <button onclick="submitSelection()">Submit Selection</button>
-  <div id="feedback"></div>
+<style>
+  #loadingScreen {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: black;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 3em;
+    z-index: 9999;
+    flex-direction: column;
+    animation: fadeOut 1s ease-in-out 3s forwards;
+  }
 
-  <script>
-    const suits = ['♠', '♥', '♦', '♣'];
-    const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
-    let deck = [], step = 0;
-    let playerHand = [], botHands = [], tableCards = [];
-    let selectedCards = [];
+  #loadingScreen .aces {
+    display: flex;
+    gap: 20px;
+  }
 
-    function createDeck() {
-      deck = [];
-      for (let suit of suits) {
-        for (let rank of ranks) {
-          deck.push(rank + suit);
-        }
-      }
-      deck.sort(() => Math.random() - 0.5);
-    }
+  @keyframes fadeOut {
+    to { opacity: 0; visibility: hidden; }
+  }
+</style>
 
-    function nextStep() {
-      const area = document.getElementById("gameArea");
-      area.innerHTML = "";
-      if (step === 0) {
-        createDeck();
-        playerHand = [deck.pop(), deck.pop()];
-        const numBots = Math.floor(Math.random() * 3) + 1;
-        botHands = Array.from({ length: numBots }, () => [deck.pop(), deck.pop()]);
-        tableCards = [deck.pop(), deck.pop(), deck.pop(), deck.pop(), deck.pop()];
-        area.innerHTML += `<div class="hand"><strong>Your Hand:</strong> ${renderCards(playerHand, true)}</div>`;
-        botHands.forEach((_, i) => {
-          area.innerHTML += `<div class="hand"><strong>Bot ${i + 1}:</strong> ${renderCards(["🂠", "🂠"], false)}</div>`;
-        });
-        step++;
-      } else if (step === 1) {
-        area.innerHTML = `<div class="hand"><strong>Flop:</strong> ${renderCards(tableCards.slice(0, 3), true)}</div>`;
-        step++;
-      } else if (step === 2) {
-        area.innerHTML = `<div class="hand"><strong>Turn:</strong> ${renderCards(tableCards.slice(0, 4), true)}</div>`;
-        step++;
-      } else if (step === 3) {
-        area.innerHTML = `<div class="hand"><strong>River:</strong> ${renderCards(tableCards, true)}</div>`;
-        step++;
-      } else if (step === 4) {
-        area.innerHTML = `<div class="hand"><strong>Table Cards:</strong> ${renderCards(tableCards, true, true)}</div>`;
-        area.innerHTML += `<div class="hand"><strong>Your Hand:</strong> ${renderCards(playerHand, true, true)}</div>`;
-        botHands.forEach((hand, i) => {
-          area.innerHTML += `<div class="hand"><strong>Bot ${i + 1}:</strong> ${renderCards(hand, true, true)}</div>`;
-        });
-        step++;
-      }
-    }
-
-    function renderCards(cards, faceUp, clickable = false) {
-      return cards.map(card => {
-        const id = "card-" + Math.random().toString(36).substr(2, 9);
-        return `<span class="card" id="${id}" onclick="${clickable ? `toggleCard('${id}', '${card}')` : ''}">${faceUp ? card : "🂠"}</span>`;
-      }).join("");
-    }
-
-    function toggleCard(id, card) {
-      const el = document.getElementById(id);
-      if (selectedCards.includes(card)) {
-        selectedCards = selectedCards.filter(c => c !== card);
-        el.classList.remove("selected");
-      } else {
-        selectedCards.push(card);
-        el.classList.add("selected");
-      }
-    }
-
-    function getRankValue(rank) {
-      return ranks.indexOf(rank);
-    }
-
-    function getCombinations(arr, size) {
-      const result = [];
-      const combine = (start, combo) => {
-        if (combo.length === size) {
-          result.push(combo);
-          return;
-        }
-        for (let i = start; i < arr.length; i++) {
-          combine(i + 1, combo.concat([arr[i]]));
-        }
-      };
-      combine(0, []);
-      return result;
-    }
-
-    function evaluateHand(cards) {
-      const rankCounts = {}, suitCounts = {}, values = [];
-      for (let card of cards) {
-        let rank = card[0], suit = card[1];
-        rankCounts[rank] = (rankCounts[rank] || 0) + 1;
-        suitCounts[suit] = (suitCounts[suit] || 0) + 1;
-        values.push(getRankValue(rank));
-      }
-      values.sort((a, b) => b - a);
-      const isFlush = Object.values(suitCounts).some(c => c >= 5);
-      const isStraight = checkStraight(values);
-
-      if (isFlush && isStraight) return { score: 8, name: "Straight Flush", kickers: values };
-      if (Object.values(rankCounts).includes(4)) return { score: 7, name: "Four of a Kind", kickers: values };
-      if (Object.values(rankCounts).includes(3) && Object.values(rankCounts).includes(2)) return { score: 6, name: "Full House", kickers: values };
-      if (isFlush) return { score: 5, name: "Flush", kickers: values };
-      if (isStraight) return { score: 4, name: "Straight", kickers: values };
-      if (Object.values(rankCounts).includes(3)) return { score: 3, name: "Three of a Kind", kickers: values };
-      if (Object.values(rankCounts).filter(v => v === 2).length === 2) return { score: 2, name: "Two Pair", kickers: values };
-      if (Object.values(rankCounts).includes(2)) return { score: 1, name: "One Pair", kickers: values };
-      return { score: 0, name: "High Card", kickers: values };
-    }
-
-    function checkStraight(values) {
-      let unique = [...new Set(values)];
-      for (let i = 0; i <= unique.length - 5; i++) {
-        let slice = unique.slice(i, i + 5);
-        if (slice.every((v, idx, arr) => idx === 0 || arr[idx - 1] - 1 === v)) return true;
-      }
-      if (unique.includes(12) && unique.includes(0) && unique.includes(1) && unique.includes(2) && unique.includes(3)) return true;
-      return false;
-    }
-
-    function compareHands(a, b) {
-      if (a.score !== b.score) return a.score - b.score;
-      for (let i = 0; i < Math.min(a.kickers.length, b.kickers.length); i++) {
-        if (a.kickers[i] !== b.kickers[i]) return a.kickers[i] - b.kickers[i];
-      }
-      return 0;
-    }
-
-    function submitSelection() {
-      const allHands = [["Player 1", playerHand]].concat(botHands.map((h, i) => [`Bot ${i + 1}`, h]));
-      let bestScore = -1, bestKickers = [], bestHand = [];
-
-      for (let [name, hand] of allHands) {
-        let full = hand.concat(tableCards);
-        let best = getCombinations(full, 5)
-          .map(combo => evaluateHand(combo))
-          .sort((a, b) => compareHands(b, a))[0];
-
-        let result = compareHands({ score: bestScore, kickers: bestKickers }, best);
-        if (result < 0) {
-          bestScore = best.score;
-          bestKickers = best.kickers;
-          bestHand = hand;
-        }
-      }
-
-      const correctSet = new Set(bestHand.concat(tableCards).map(c => c));
-      const selectedSet = new Set(selectedCards);
-      const feedback = document.getElementBy
+<div id="loadingScreen">
+  <div class="aces">
+    <span>🂡</span> <!-- Ace of Spades -->
+    <span>🂱</span> <!-- Ace of Hearts -->
+    <span>🃁</span> <!-- Ace of Diamonds -->
+    <span>🃑</span> <!-- Ace of Clubs -->
+  </div>
+  <div style="margin-top: 20px;">Loading Poker Trainer…</div>
+</div>
