@@ -1,1 +1,91 @@
-hi
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Poker Table Simulation</title>
+  <style>
+    body { font-family: Arial; text-align: center; margin-top: 40px; }
+    table { margin: 20px auto; border-collapse: collapse; }
+    th, td { border: 1px solid #333; padding: 10px 20px; font-size: 1.2em; }
+    button { padding: 10px 20px; font-size: 1em; }
+  </style>
+</head>
+<body>
+  <h1>Poker Table: Opponent Showdown</h1>
+  <button onclick="dealTable()">Deal Hands</button>
+  <table id="pokerTable">
+    <thead>
+      <tr><th>Player</th><th>Hand</th><th>Rank</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <h2 id="winner"></h2>
+
+  <script>
+    const suits = ['♠', '♥', '♦', '♣'];
+    const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
+
+    function createDeck() {
+      let deck = [];
+      for (let suit of suits) {
+        for (let rank of ranks) {
+          deck.push(rank + suit);
+        }
+      }
+      return deck;
+    }
+
+    function shuffle(deck) {
+      for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+      }
+    }
+
+    function evaluate(hand) {
+      const rankCounts = {};
+      for (let card of hand) {
+        let rank = card[0];
+        rankCounts[rank] = (rankCounts[rank] || 0) + 1;
+      }
+      const values = Object.values(rankCounts);
+      if (values.includes(2)) return 2; // Pair
+      return 1; // High card
+    }
+
+    function dealTable() {
+      let deck = createDeck();
+      shuffle(deck);
+
+      let numPlayers = Math.floor(Math.random() * 3) + 2; // 2 to 4
+      let players = [];
+      for (let i = 1; i <= numPlayers; i++) {
+        let hand = [deck.pop(), deck.pop()];
+        let score = evaluate(hand);
+        players.push({ name: "Player " + i, hand, score });
+      }
+
+      let tbody = document.querySelector("#pokerTable tbody");
+      tbody.innerHTML = "";
+      let bestScore = 0;
+      let winners = [];
+
+      for (let player of players) {
+        let rankName = player.score === 2 ? "Pair" : "High Card";
+        let row = `<tr><td>${player.name}</td><td>${player.hand.join(" ")}</td><td>${rankName}</td></tr>`;
+        tbody.innerHTML += row;
+
+        if (player.score > bestScore) {
+          bestScore = player.score;
+          winners = [player.name];
+        } else if (player.score === bestScore) {
+          winners.push(player.name);
+        }
+      }
+
+      document.getElementById("winner").innerText = winners.length > 1
+        ? "🤝 Tie between: " + winners.join(", ")
+        : "🏆 Winner: " + winners[0];
+    }
+  </script>
+</body>
+</html>
