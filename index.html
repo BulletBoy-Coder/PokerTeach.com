@@ -4,31 +4,28 @@
   <title>Poker Trainer</title>
   <style>
     body { font-family: Arial, sans-serif; text-align: center; margin-top: 30px; }
-    .card-box { display: inline-block; border: 2px solid #ccc; padding: 10px; margin: 10px; cursor: pointer; border-radius: 8px; }
-    .card-box.selected { border-color: blue; background-color: #eef; }
-    .card-box.correct { border-color: green; background-color: #dfd; }
-    .card-box.incorrect { border-color: red; background-color: #fdd; }
-    button { padding: 10px 20px; font-size: 1em; margin: 10px; }
-    #community { font-size: 1.5em; margin: 20px; }
+    .card { display: inline-block; border: 2px solid #ccc; padding: 10px; margin: 5px; cursor: pointer; border-radius: 6px; font-size: 1.2em; }
+    .card.selected { border-color: blue; background-color: #eef; }
+    .card.correct { border-color: green; background-color: #dfd; }
+    .card.incorrect { border-color: red; background-color: #fdd; }
+    .hand { margin: 10px; }
+    button { padding: 10px 20px; margin: 10px; font-size: 1em; }
     #feedback { font-size: 1.2em; margin-top: 20px; }
   </style>
 </head>
 <body>
   <h1>Poker Trainer</h1>
-  <div id="stepArea">
-    <button onclick="nextStep()">Next</button>
-  </div>
-  <div id="community"></div>
-  <div id="players"></div>
-  <button onclick="submitWinner()">Submit Winner</button>
+  <button onclick="nextStep()">Next</button>
+  <div id="gameArea"></div>
+  <button onclick="submitSelection()">Submit Selection</button>
   <div id="feedback"></div>
 
   <script>
     const suits = ['♠', '♥', '♦', '♣'];
     const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
     let deck = [], step = 0;
-    let playerHands = {}, communityCards = [];
-    let selected = [];
+    let playerHand = [], botHands = [], tableCards = [];
+    let selectedCards = [];
 
     function createDeck() {
       deck = [];
@@ -37,61 +34,57 @@
           deck.push(rank + suit);
         }
       }
-      shuffle(deck);
-    }
-
-    function shuffle(array) {
-      for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
-      }
+      deck.sort(() => Math.random() - 0.5);
     }
 
     function nextStep() {
+      const area = document.getElementById("gameArea");
+      area.innerHTML = "";
       if (step === 0) {
         createDeck();
-        playerHands = {
-          "Player 1": [deck.pop(), deck.pop()],
-          "Bot 1": [deck.pop(), deck.pop()],
-          "Bot 2": [deck.pop(), deck.pop()],
-          "Bot 3": [deck.pop(), deck.pop()]
-        };
-        communityCards = [deck.pop(), deck.pop(), deck.pop(), deck.pop(), deck.pop()];
-        document.getElementById("players").innerHTML = renderBox("Player 1", playerHands["Player 1"]);
+        playerHand = [deck.pop(), deck.pop()];
+        const numBots = Math.floor(Math.random() * 3) + 1;
+        botHands = Array.from({ length: numBots }, () => [deck.pop(), deck.pop()]);
+        tableCards = [deck.pop(), deck.pop(), deck.pop(), deck.pop(), deck.pop()];
+        area.innerHTML += `<div class="hand"><strong>Your Hand:</strong> ${renderCards(playerHand, true)}</div>`;
+        botHands.forEach((_, i) => {
+          area.innerHTML += `<div class="hand"><strong>Bot ${i + 1}:</strong> ${renderCards(["🂠", "🂠"], false)}</div>`;
+        });
         step++;
       } else if (step === 1) {
-        document.getElementById("community").innerText = "Flop: " + communityCards.slice(0, 3).join(" ");
+        area.innerHTML = `<div class="hand"><strong>Flop:</strong> ${renderCards(tableCards.slice(0, 3), true)}</div>`;
         step++;
       } else if (step === 2) {
-        document.getElementById("community").innerText += " | Turn: " + communityCards[3];
+        area.innerHTML = `<div class="hand"><strong>Turn:</strong> ${renderCards(tableCards.slice(0, 4), true)}</div>`;
         step++;
       } else if (step === 3) {
-        document.getElementById("community").innerText += " | River: " + communityCards[4];
+        area.innerHTML = `<div class="hand"><strong>River:</strong> ${renderCards(tableCards, true)}</div>`;
         step++;
       } else if (step === 4) {
-        let html = "";
-        for (let name in playerHands) {
-          html += renderBox(name, playerHands[name]);
-        }
-        document.getElementById("players").innerHTML = html;
+        area.innerHTML = `<div class="hand"><strong>Table Cards:</strong> ${renderCards(tableCards, true, true)}</div>`;
+        area.innerHTML += `<div class="hand"><strong>Your Hand:</strong> ${renderCards(playerHand, true, true)}</div>`;
+        botHands.forEach((hand, i) => {
+          area.innerHTML += `<div class="hand"><strong>Bot ${i + 1}:</strong> ${renderCards(hand, true, true)}</div>`;
+        });
         step++;
       }
     }
 
-    function renderBox(name, hand) {
-      return `<div class="card-box" onclick="toggleSelect('${name}')" id="${name.replace(' ', '')}">
-                <strong>${name}</strong><br>${hand.join(" ")}
-              </div>`;
+    function renderCards(cards, faceUp, clickable = false) {
+      return cards.map(card => {
+        const id = "card-" + Math.random().toString(36).substr(2, 9);
+        return `<span class="card" id="${id}" onclick="${clickable ? `toggleCard('${id}', '${card}')` : ''}">${faceUp ? card : "🂠"}</span>`;
+      }).join("");
     }
 
-    function toggleSelect(name) {
-      const box = document.getElementById(name.replace(' ', ''));
-      if (selected.includes(name)) {
-        selected = selected.filter(n => n !== name);
-        box.classList.remove("selected");
+    function toggleCard(id, card) {
+      const el = document.getElementById(id);
+      if (selectedCards.includes(card)) {
+        selectedCards = selectedCards.filter(c => c !== card);
+        el.classList.remove("selected");
       } else {
-        selected.push(name);
-        box.classList.add("selected");
+        selectedCards.push(card);
+        el.classList.add("selected");
       }
     }
 
@@ -114,7 +107,7 @@
       return result;
     }
 
-    function evaluateFiveCardHand(cards) {
+    function evaluateHand(cards) {
       const rankCounts = {}, suitCounts = {}, values = [];
       for (let card of cards) {
         let rank = card[0], suit = card[1];
@@ -123,7 +116,7 @@
         values.push(getRankValue(rank));
       }
       values.sort((a, b) => b - a);
-      const isFlush = Object.values(suitCounts).some(c => c === 5);
+      const isFlush = Object.values(suitCounts).some(c => c >= 5);
       const isStraight = checkStraight(values);
 
       if (isFlush && isStraight) return { score: 8, name: "Straight Flush", kickers: values };
@@ -155,30 +148,24 @@
       return 0;
     }
 
-    function submitWinner() {
-      let bestScore = -1, bestKickers = [], actualWinners = [];
+    function submitSelection() {
+      const allHands = [["Player 1", playerHand]].concat(botHands.map((h, i) => [`Bot ${i + 1}`, h]));
+      let bestScore = -1, bestKickers = [], bestHand = [];
 
-      for (let name in playerHands) {
-        let allCards = playerHands[name].concat(communityCards);
-        let best = getCombinations(allCards, 5)
-          .map(combo => evaluateFiveCardHand(combo))
+      for (let [name, hand] of allHands) {
+        let full = hand.concat(tableCards);
+        let best = getCombinations(full, 5)
+          .map(combo => evaluateHand(combo))
           .sort((a, b) => compareHands(b, a))[0];
 
         let result = compareHands({ score: bestScore, kickers: bestKickers }, best);
         if (result < 0) {
           bestScore = best.score;
           bestKickers = best.kickers;
-          actualWinners = [name];
-        } else if (result === 0) {
-          actualWinners.push(name);
+          bestHand = hand;
         }
       }
 
-      let correct = selected.sort().join(",") === actualWinners.sort().join(",");
-      let feedback = document.getElementById("feedback");
-      feedback.innerHTML = correct
-        ? `✅ Correct! You selected: ${selected.join(", ")}`
-        : `❌ Incorrect. You selected: ${selected.join(", ")}<br>Correct winner(s): ${actualWinners.join(", ")}`;
-
-      for (let name in playerHands) {
-        let box = document.getElementById(name.replace('[43dcd9a7-70db-4a1f-b0ae-981daa162054](https://github.com/Aliadelik07/mnm_experiment/tree/c105662cf954307384ff62525c8ede999477e386/html%2Flib%2Futil-2020.2.js?citationMarker=43dcd9a7-70db-4a1f-b0ae-981daa162054 "1")[43dcd9a7-70db-4a1f-b0ae-981daa162054](https://github.com/derycklong/PluralSight-Angular-Tutorial/tree/f841c806af1dc94e9316799fbcee7b3cc1a0c086/node_modules%2Fsocks%2Fbuild%2Fcommon%2Futil.js?citationMarker=43dcd9a7-70db-4a1f-b0ae-981daa162054 "2")
+      const correctSet = new Set(bestHand.concat(tableCards).map(c => c));
+      const selectedSet = new Set(selectedCards);
+      const feedback = document.getElementBy
