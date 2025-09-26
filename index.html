@@ -1,17 +1,19 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Poker Table Simulation</title>
+  <title>Poker Table with Community Cards</title>
   <style>
     body { font-family: Arial; text-align: center; margin-top: 40px; }
     table { margin: 20px auto; border-collapse: collapse; }
     th, td { border: 1px solid #333; padding: 10px 20px; font-size: 1.2em; }
     button { padding: 10px 20px; font-size: 1em; }
+    #tableCards { font-size: 1.5em; margin: 20px; }
   </style>
 </head>
 <body>
   <h1>Poker Table: Opponent Showdown</h1>
   <button onclick="dealTable()">Deal Hands</button>
+  <div id="tableCards"></div>
   <table id="pokerTable">
     <thead>
       <tr><th>Player</th><th>Hand</th><th>Rank</th></tr>
@@ -41,26 +43,34 @@
       }
     }
 
-    function evaluate(hand) {
+    function evaluate(hand, table) {
+      const allCards = hand.concat(table);
       const rankCounts = {};
-      for (let card of hand) {
+      for (let card of allCards) {
         let rank = card[0];
         rankCounts[rank] = (rankCounts[rank] || 0) + 1;
       }
       const values = Object.values(rankCounts);
-      if (values.includes(2)) return 2; // Pair
-      return 1; // High card
+      if (values.includes(4)) return 7; // Four of a Kind
+      if (values.includes(3) && values.includes(2)) return 6; // Full House
+      if (values.includes(3)) return 3; // Three of a Kind
+      if (values.filter(v => v === 2).length >= 2) return 2.5; // Two Pair
+      if (values.includes(2)) return 2; // One Pair
+      return 1; // High Card
     }
 
     function dealTable() {
       let deck = createDeck();
       shuffle(deck);
 
+      let tableCards = deck.splice(0, 5);
+      document.getElementById("tableCards").innerText = "Table Cards: " + tableCards.join(" ");
+
       let numPlayers = Math.floor(Math.random() * 3) + 2; // 2 to 4
       let players = [];
       for (let i = 1; i <= numPlayers; i++) {
         let hand = [deck.pop(), deck.pop()];
-        let score = evaluate(hand);
+        let score = evaluate(hand, tableCards);
         players.push({ name: "Player " + i, hand, score });
       }
 
@@ -70,7 +80,14 @@
       let winners = [];
 
       for (let player of players) {
-        let rankName = player.score === 2 ? "Pair" : "High Card";
+        let rankName = {
+          7: "Four of a Kind",
+          6: "Full House",
+          3: "Three of a Kind",
+          2.5: "Two Pair",
+          2: "One Pair",
+          1: "High Card"
+        }[player.score];
         let row = `<tr><td>${player.name}</td><td>${player.hand.join(" ")}</td><td>${rankName}</td></tr>`;
         tbody.innerHTML += row;
 
