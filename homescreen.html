@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Poker App</title>
+  <title>Poker Central</title>
   <style>
     body {
       margin: 0;
       font-family: Arial, sans-serif;
-      background: #111;
+      background: black;
       color: white;
       text-align: center;
     }
@@ -46,6 +46,11 @@
       gap: 30px;
     }
 
+    h1 {
+      font-size: 2.5em;
+      margin-bottom: 20px;
+    }
+
     .home-button {
       padding: 20px 40px;
       font-size: 1.5em;
@@ -55,7 +60,7 @@
       border-radius: 12px;
       cursor: pointer;
       transition: 0.3s;
-      width: 250px;
+      width: 260px;
     }
 
     .home-button:hover {
@@ -66,6 +71,45 @@
 </head>
 <body>
 
+  <!-- Loading screen -->
+  <div id="loadingScreen">
+    <div class="aces">
+      <span>🂡</span> <span>🂱</span> <span>🃁</span> <span>🃑</span>
+    </div>
+    <div style="margin-top: 20px;">Loading Poker Central…</div>
+  </div>
+
+  <!-- Home screen -->
+  <div id="homeScreen">
+    <h1>Welcome to Poker Central</h1>
+    <button class="home-button" onclick="launchTrainer()">🎯 Poker Trainer</button>
+    <button class="home-button" onclick="launchGame()">🃏 Poker Game</button>
+    <button class="home-button" onclick="launchOptions()">⚙️ Options</button>
+  </div>
+
+  <script>
+    // Show home screen after loading
+    setTimeout(() => {
+      document.getElementById("loadingScreen").style.display = "none";
+      document.getElementById("homeScreen").style.display = "flex";
+    }, 4000);
+
+    // Navigation functions
+    function launchTrainer() {
+      window.location.href = "pokertrainer.html";
+    }
+
+    function launchGame() {
+      window.location.href = "pokergame.html";
+    }
+
+    function launchOptions() {
+      window.location.href = "options.html";
+    }
+  </script>
+
+</body>
+</html>
   <!-- Loading screen -->
   <div id="loadingScreen">
     <div class="aces">
