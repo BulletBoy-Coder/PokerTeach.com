@@ -88,84 +88,13 @@
       }
     }
 
-    function getRankValue(rank) {
-      return ranks.indexOf(rank);
-    }
-
-    function getCombinations(arr, size) {
-      const result = [];
-      const combine = (start, combo) => {
-        if (combo.length === size) {
-          result.push(combo);
-          return;
-        }
-        for (let i = start; i < arr.length; i++) {
-          combine(i + 1, combo.concat([arr[i]]));
-        }
-      };
-      combine(0, []);
-      return result;
-    }
-
-    function evaluateHand(cards) {
-      const rankCounts = {}, suitCounts = {}, values = [];
-      for (let card of cards) {
-        let rank = card[0], suit = card[1];
-        rankCounts[rank] = (rankCounts[rank] || 0) + 1;
-        suitCounts[suit] = (suitCounts[suit] || 0) + 1;
-        values.push(getRankValue(rank));
-      }
-      values.sort((a, b) => b - a);
-      const isFlush = Object.values(suitCounts).some(c => c >= 5);
-      const isStraight = checkStraight(values);
-
-      if (isFlush && isStraight) return { score: 8, name: "Straight Flush", kickers: values };
-      if (Object.values(rankCounts).includes(4)) return { score: 7, name: "Four of a Kind", kickers: values };
-      if (Object.values(rankCounts).includes(3) && Object.values(rankCounts).includes(2)) return { score: 6, name: "Full House", kickers: values };
-      if (isFlush) return { score: 5, name: "Flush", kickers: values };
-      if (isStraight) return { score: 4, name: "Straight", kickers: values };
-      if (Object.values(rankCounts).includes(3)) return { score: 3, name: "Three of a Kind", kickers: values };
-      if (Object.values(rankCounts).filter(v => v === 2).length === 2) return { score: 2, name: "Two Pair", kickers: values };
-      if (Object.values(rankCounts).includes(2)) return { score: 1, name: "One Pair", kickers: values };
-      return { score: 0, name: "High Card", kickers: values };
-    }
-
-    function checkStraight(values) {
-      let unique = [...new Set(values)];
-      for (let i = 0; i <= unique.length - 5; i++) {
-        let slice = unique.slice(i, i + 5);
-        if (slice.every((v, idx, arr) => idx === 0 || arr[idx - 1] - 1 === v)) return true;
-      }
-      if (unique.includes(12) && unique.includes(0) && unique.includes(1) && unique.includes(2) && unique.includes(3)) return true;
-      return false;
-    }
-
-    function compareHands(a, b) {
-      if (a.score !== b.score) return a.score - b.score;
-      for (let i = 0; i < Math.min(a.kickers.length, b.kickers.length); i++) {
-        if (a.kickers[i] !== b.kickers[i]) return a.kickers[i] - b.kickers[i];
-      }
-      return 0;
-    }
-
-    function submitSelection() {
-      const allHands = [["Player 1", playerHand]].concat(botHands.map((h, i) => [`Bot ${i + 1}`, h]));
-      let bestScore = -1, bestKickers = [], bestHand = [];
-
-      for (let [name, hand] of allHands) {
-        let full = hand.concat(tableCards);
-        let best = getCombinations(full, 5)
-          .map(combo => evaluateHand(combo))
-          .sort((a, b) => compareHands(b, a))[0];
-
-        let result = compareHands({ score: bestScore, kickers: bestKickers }, best);
-        if (result < 0) {
-          bestScore = best.score;
-          bestKickers = best.kickers;
-          bestHand = hand;
-        }
-      }
-
-      const correctSet = new Set(bestHand.concat(tableCards).map(c => c));
-      const selectedSet = new Set(selectedCards);
-      const feedback = document.getElementBy
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Poker Trainer</title>
+</head>
+<body>
+  <h1>Welcome to the Poker Trainer</h1>
+  <p>Trainer logic goes here...</p>
+</body>
+</html>
